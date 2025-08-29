@@ -1,0 +1,22 @@
+INFO:app:Database initialized at /tmp/fastlane.db
+INFO:waitress:Serving on http://0.0.0.0:8080
+INFO:app:Price request from 176.228.138.54
+INFO:app:Cache hit - price 8 is 298s old
+INFO:app:Price request from 188.64.207.56
+INFO:app:Cache expired - 1329s old
+INFO:app:Fetching fresh price from fastlane.co.il
+INFO:scraper:Extracted price: 8 NIS
+INFO:app:Cached price: 8 NIS
+INFO:app:Fresh price fetched: 8 NIS
+INFO:app:Price request from 188.64.207.56
+INFO:app:Cache hit - price 8 is 4s old
+INFO:app:Price request from 188.64.207.56
+INFO:app:Cache hit - price 8 is 72s old
+INFO:app:Price request from 188.64.207.56
+INFO:app:Cache hit - price 8 is 105s old
+INFO:app:Price request from 188.64.207.56
+INFO:app:Cache hit - price 8 is 238s old
+INFO:app:Price request from 188.64.207.56
+INFO:app:Cache hit - price 8 is 272s old
+INFO:app:Price request from 188.64.207.56
+INFO:app:Cache hit - price 8 is 293s old

@@ -1,0 +1,106 @@
+service: fastlane-price
+
+frameworkVersion: '3'
+
+provider:
+  name: aws
+  runtime: python3.11
+  region: ${opt:region, 'us-east-1'}
+  stage: ${opt:stage, 'prod'}
+  memorySize: 128
+  timeout: 30
+  
+  environment:
+    CACHE_TABLE: ${self:service}-cache-${self:provider.stage}
+    
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - dynamodb:GetItem
+            - dynamodb:PutItem
+            - dynamodb:UpdateItem
+          Resource: 
+            - Fn::GetAtt: [CacheTable, Arn]
+
+functions:
+  getPrice:
+    handler: handler.main
+    description: "Get current Fast Lane toll price"
+    events:
+      - http:
+          path: /price
+          method: GET
+          cors: true
+    reservedConcurrency: 10  # Prevent runaway costs
+    
+  health:
+    handler: handler.health
+    description: "Health check endpoint"
+    events:
+      - http:
+          path: /health
+          method: GET
+          cors: true
+
+resources:
+  Resources:
+    CacheTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:provider.environment.CACHE_TABLE}
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        BillingMode: PAY_PER_REQUEST
+        TimeToLiveSpecification:
+          AttributeName: ttl
+          Enabled: true
+        PointInTimeRecoverySpecification:
+          PointInTimeRecoveryEnabled: false
+        Tags:
+          - Key: Service
+            Value: ${self:service}
+          - Key: Stage
+            Value: ${self:provider.stage}
+
+  Outputs:
+    ApiEndpoint:
+      Description: "API Gateway endpoint URL"
+      Value:
+        Fn::Join:
+          - ''
+          - - 'https://'
+            - Ref: ApiGatewayRestApi
+            - '.execute-api.'
+            - ${self:provider.region}
+            - '.amazonaws.com/'
+            - ${self:provider.stage}
+      Export:
+        Name: ${self:service}-${self:provider.stage}-api-url
+        
+    PriceEndpoint:
+      Description: "Price endpoint URL"
+      Value:
+        Fn::Join:
+          - ''
+          - - 'https://'
+            - Ref: ApiGatewayRestApi
+            - '.execute-api.'
+            - ${self:provider.region}
+            - '.amazonaws.com/'
+            - ${self:provider.stage}
+            - '/price'
+
+plugins:
+  - serverless-python-requirements
+
+custom:
+  pythonRequirements:
+    dockerizePip: true
+    slim: true
+    strip: false

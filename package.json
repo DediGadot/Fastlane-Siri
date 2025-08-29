@@ -1,0 +1,17 @@
+{
+  "name": "fastlane-price-service",
+  "version": "1.0.0",
+  "description": "Serverless price fetcher for Fast Lane Israel toll road",
+  "main": "handler.py",
+  "scripts": {
+    "deploy": "serverless deploy",
+    "test": "python -m pytest tests/",
+    "local": "serverless invoke local -f getPrice"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "serverless": "^3.38.0"
+  },
+  "author": "FastLane Price Service",
+  "license": "MIT"
+}
