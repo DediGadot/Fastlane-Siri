@@ -1,47 +1,37 @@
 # Fast Lane Price Service 🛣️
 
-A simple, reliable serverless service to get the current toll price for Israel's Fast Lane (הנתיב המהיר) with Siri integration.
+A simple, reliable **local service** to get the current toll price for Israel's Fast Lane (הנתיב המהיר) with Siri integration.
+
+**NO CLOUD. NO BILLS. YOUR SERVER.**
 
 ## Features
 
 - ⚡ **Fast**: 5-minute caching, sub-second responses
-- 💰 **Cheap**: Runs on AWS free tier, costs pennies per month
+- 💰 **Free**: Runs on your hardware, $0/month
 - 🗣️ **Siri Ready**: "Hey Siri, what's the fast lane price?"
-- 🏗️ **Serverless**: No servers to maintain, scales automatically
-- 🔒 **Reliable**: Error handling, health checks, monitoring
+- 🏠 **Self-Hosted**: Complete control, no external dependencies
+- 🔒 **Private**: Your data stays on your server
 
 ## Quick Start
 
-### Prerequisites
-
-1. **AWS Account** with CLI configured:
-   ```bash
-   aws configure
-   ```
-
-2. **Node.js** (v18+):
-   ```bash
-   node --version  # Should be 18+
-   ```
-
-3. **Python** (3.11):
-   ```bash
-   python3 --version  # Should be 3.11+
-   ```
-
-### Deploy in 2 Minutes
-
 ```bash
-git clone <this-repo>
-cd fastlane
-./deploy.sh
+# Start the service
+./start.sh
+
+# Test it works
+curl http://localhost:8080/price
 ```
 
-That's it. The script will:
-- Install dependencies
-- Deploy to AWS
-- Test the endpoint
-- Give you the API URL for Siri
+That's it. No AWS account, no cloud setup, just Python.
+
+## Global Access
+
+Your service is running at: `http://YOUR-SERVER-IP:8080/price`
+
+For external access:
+1. **Port forwarding**: Forward port 8080 on your router to this server
+2. **Firewall**: `sudo ufw allow 8080`
+3. **Optional**: Use dynamic DNS service for a stable domain name
 
 ## Siri Integration (iPhone)
 
@@ -51,7 +41,7 @@ That's it. The script will:
 2. Tap **"+"** to create new shortcut
 3. Search for **"Get Contents of URL"**
 4. Add it and configure:
-   - **URL**: `https://YOUR-API-URL/price` (from deployment output)
+   - **URL**: `http://YOUR-SERVER-IP:8080/price`
    - **Method**: `GET`
 
 ### Step 2: Parse Response
@@ -76,35 +66,6 @@ That's it. The script will:
 3. Record phrase: **"What's the fast lane price?"**
 4. Save
 
-### Alternative Setup (Copy-Paste)
-
-Import this shortcut JSON directly:
-
-```json
-{
-  "WFWorkflowActions": [
-    {
-      "WFWorkflowActionIdentifier": "is.workflow.actions.downloadurl",
-      "WFWorkflowActionParameters": {
-        "WFHTTPMethod": "GET",
-        "WFURL": "YOUR-API-URL/price"
-      }
-    },
-    {
-      "WFWorkflowActionIdentifier": "is.workflow.actions.getvalueforkey",
-      "WFWorkflowActionParameters": {
-        "WFDictionaryKey": "text_he"
-      }
-    },
-    {
-      "WFWorkflowActionIdentifier": "is.workflow.actions.speaktext"
-    }
-  ]
-}
-```
-
-Replace `YOUR-API-URL` with your actual endpoint.
-
 ## API Reference
 
 ### GET /price
@@ -115,9 +76,9 @@ Returns current Fast Lane toll price.
 ```json
 {
   "price": 8,
-  "cached": false,
-  "timestamp": "2025-01-15T10:30:00",
-  "text_he": "המחיר בנתיב המהיר כעת: 8 שקלים",
+  "cached": true,
+  "timestamp": "2025-08-29T10:06:48.272486",
+  "text_he": "המחיר בנתיב המהיר: 8 שקלים",
   "text_en": "Fast lane toll price: 8 shekels",
   "currency": "ILS"
 }
@@ -125,8 +86,8 @@ Returns current Fast Lane toll price.
 
 **Fields:**
 - `price`: Price in Israeli New Shekels (NIS)
-- `cached`: Whether result came from cache
-- `timestamp`: When price was fetched
+- `cached`: Whether result came from cache (5-minute TTL)
+- `timestamp`: When response was generated
 - `text_he`: Ready-to-speak Hebrew text
 - `text_en`: Ready-to-speak English text
 
@@ -138,131 +99,195 @@ Health check endpoint.
 ```json
 {
   "status": "healthy",
-  "timestamp": "2025-01-15T10:30:00"
+  "timestamp": "2025-08-29T10:06:48.272486",
+  "service": "fastlane-price-local"
 }
 ```
+
+### GET /stats
+
+Request statistics and cache info.
+
+**Response:**
+```json
+{
+  "requests_today": 5,
+  "cache": {
+    "price": 8,
+    "age_seconds": 45,
+    "valid": true
+  },
+  "timestamp": "2025-08-29T10:06:48.272486"
+}
+```
+
+### GET /
+
+Service information and available endpoints.
 
 ## Architecture
 
 ```
-iPhone/Siri → API Gateway → Lambda → DynamoDB Cache
-                              ↓
-                         fastlane.co.il
+iPhone/Siri → Your Server:8080 → Flask → SQLite Cache
+                                    ↓
+                              fastlane.co.il
 ```
 
 ### Components
 
-- **AWS Lambda**: Runs the scraper code
-- **API Gateway**: HTTP endpoint for Siri
-- **DynamoDB**: 5-minute price cache
-- **BeautifulSoup4**: HTML parsing
-- **Serverless Framework**: Infrastructure as code
+- **Flask**: Lightweight Python web server
+- **Waitress**: Production WSGI server (not Flask dev server)
+- **SQLite**: Simple file-based cache database
+- **BeautifulSoup4**: HTML parsing for price extraction
+- **Requests**: HTTP client for fetching website data
 
-### Cost Estimate
+## Project Structure
 
-With AWS Free Tier:
-- **Lambda**: 1M requests/month FREE
-- **API Gateway**: 1M requests/month FREE  
-- **DynamoDB**: 25GB storage FREE
+```
+fastlane/
+├── app.py                  # Main Flask application
+├── run_production.py       # Production server runner
+├── scraper.py             # Price extraction logic  
+├── start.sh               # One-command startup script
+├── requirements_local.txt # Python dependencies
+├── README.md              # This file
+├── README_LOCAL.md        # Detailed local setup guide
+└── venv/                  # Python virtual environment
+```
 
-**Real cost**: $0.00 for normal usage (few requests per day)
+## Management Commands
+
+```bash
+# Start service
+./start.sh
+
+# Stop service  
+kill $(cat service.pid)
+
+# Restart service
+./start.sh
+
+# View logs
+tail -f service.log
+
+# Check if running
+ps -p $(cat service.pid) || echo "Not running"
+
+# Test endpoints
+curl localhost:8080/health
+curl localhost:8080/price  
+curl localhost:8080/stats
+```
 
 ## Development
 
 ### Local Testing
 
-Test the scraper locally:
+Test the scraper directly:
 
 ```bash
+source venv/bin/activate
 python3 -c "
 import requests
 from scraper import extract_price
 html = requests.get('https://fastlane.co.il').text
-print('Price:', extract_price(html))
+print('Price:', extract_price(html), 'NIS')
 "
 ```
 
-Test Lambda locally:
+Test the Flask app:
 
 ```bash
-serverless invoke local -f getPrice
+source venv/bin/activate
+python3 app.py
+# Then in another terminal:
+curl localhost:8080/price
 ```
 
-### Project Structure
+### Dependencies
 
-```
-fastlane/
-├── handler.py          # Lambda functions
-├── scraper.py          # Price extraction logic
-├── serverless.yml      # AWS infrastructure
-├── requirements.txt    # Python dependencies
-├── deploy.sh          # One-click deployment
-├── package.json       # Node.js config
-└── README.md          # This file
-```
+Minimal requirements in `requirements_local.txt`:
+- `flask==3.0.0` - Web framework
+- `waitress==2.1.2` - Production WSGI server  
+- `requests==2.31.0` - HTTP client
+- `beautifulsoup4==4.12.2` - HTML parser
 
-### Monitoring
+### Cache Storage
 
-View logs in AWS CloudWatch:
-
-```bash
-serverless logs -f getPrice --tail
-```
-
-### Environment Variables
-
-- `CACHE_TABLE`: DynamoDB table name (auto-configured)
+- **Location**: `/tmp/fastlane.db` (SQLite file)
+- **TTL**: 5 minutes for price data
+- **Tables**: `cache` (price data), `requests` (access logs)
 
 ## Troubleshooting
 
-### "Deployment failed"
+### "Can't access from internet"
 
-1. Check AWS credentials:
-   ```bash
-   aws sts get-caller-identity
-   ```
+1. Check firewall: `sudo ufw status`
+2. Check router port forwarding (port 8080 → your server)
+3. Check your ISP doesn't block incoming connections
+4. Test locally first: `curl localhost:8080/price`
 
-2. Check AWS permissions (need Lambda, API Gateway, DynamoDB)
+### "Service won't start"
 
-3. Try different region:
-   ```bash
-   ./deploy.sh prod eu-west-1
-   ```
-
-### "Siri can't find the price"
-
-1. Test API manually:
-   ```bash
-   curl https://YOUR-API-URL/price
-   ```
-
-2. Check shortcut URL is correct
-
-3. Verify internet connection
+1. Check Python version: `python3 --version` (need 3.7+)
+2. Check port availability: `lsof -i :8080`
+3. Check logs: `cat service.log`
+4. Kill existing process: `pkill -f "python.*app.py"`
 
 ### "Price seems wrong"
 
-The service validates prices are between 1-100 NIS. If Fast Lane changes pricing significantly, update `validate_price()` in `scraper.py`.
+The service validates prices are between 1-100 NIS. If Fast Lane changes pricing significantly, the validation will reject it. Check logs for "unreasonable price" messages.
 
-### Lambda Timeout
+### "Siri can't connect"
 
-Current timeout is 30 seconds. If Fast Lane website is slow:
+1. Test API manually: `curl http://YOUR-SERVER-IP:8080/price`
+2. Verify iPhone can reach your server IP
+3. Check shortcut URL is exactly correct
+4. Ensure port 8080 is accessible from internet
 
-1. Increase timeout in `serverless.yml`
-2. Redeploy: `./deploy.sh`
+## Performance
+
+- **Cold start**: ~2 seconds (scraping website)  
+- **Cached response**: ~50ms
+- **Memory usage**: ~25MB
+- **CPU usage**: Minimal when idle
+- **Concurrent requests**: Up to 4 (Waitress default)
+
+## Security
+
+- **Rate limiting**: None (add if needed)
+- **Authentication**: None (public price data)
+- **HTTPS**: HTTP only (add cert if needed)
+- **Firewall**: Recommend restricting to port 8080 only
+
+## Cost
+
+**$0/month** - Runs on your hardware.
+
+Only costs electricity (~1-2 watts continuous).
+
+## Why Local is Better
+
+✅ **Your data** - No cloud provider access  
+✅ **Your control** - Modify anything, anytime  
+✅ **Always works** - No API rate limits or outages  
+✅ **Zero cost** - No monthly cloud bills  
+✅ **Simple** - One Python process, one SQLite file  
+✅ **Fast** - No network latency to cloud  
 
 ## Contributing
 
-This is meant to be simple. Pull requests welcome for:
+Keep it simple. Pull requests welcome for:
 
 - Bug fixes
 - Better error handling  
 - Price validation improvements
-- Documentation fixes
+- Documentation improvements
 
 **Not welcome:**
 - Complex features
 - Additional dependencies
+- Cloud integrations
 - Over-engineering
 
 ## License
@@ -277,4 +302,4 @@ This service scrapes publicly available pricing information from fastlane.co.il.
 
 ---
 
-*Built with ❤️ and frustration with toll road pricing opacity*
+*Built the right way: Simple, local, and reliable.*
